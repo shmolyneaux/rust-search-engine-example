@@ -1,0 +1,112 @@
+<html>
+    <head>
+        <style>
+body {
+    background-color: #f1f1f1;
+    max-width: 70em;
+    padding: 1em;
+    margin-left:  auto;
+    margin-right: auto;
+    font-family: Palatino;
+}
+
+.highlight {
+    background-color: yellow;
+}
+
+.snippet {
+    margin: 2em 1em 2em 1em;
+    padding: 2em;
+    background-color: white;
+    box-shadow: 0px 2px 11px 3px #aaa;
+    font-size: 1.2em;
+    line-height: 150%;
+    color: #333;
+}
+
+.snippet h2 {
+    line-height: 0;
+}
+
+#search_box {
+    width: 100%;
+    border: 1px solid #aaa;
+    border-radius: 4px;
+    padding-left: 1em;
+    color: purple;
+    height: 3em;
+    box-shadow: 0px 1px 3px 1px #aaa;
+    font-family: Arial;
+}
+        </style>
+        <script>
+
+function reloadSnippets(searchBox) {
+    var request = new XMLHttpRequest();
+    request.open("GET", "/api/search");
+    request.onload = function() {
+        clearSnippets();
+        var initialSnippets = JSON.parse(this.response);
+        for (var i=0; i<initialSnippets.length; i++) {
+            addSnippet(initialSnippets[i]);
+        }
+    };
+    request.send();
+}
+
+function clearSnippets() {
+    while (snippetContainer.firstChild) {
+        snippetContainer.removeChild(snippetContainer.lastChild);
+    }
+}
+
+function addSnippet(snippet) {
+    var snippetElement = document.createElement("div");
+    snippetElement.className = "snippet";
+    var highlightBuilder = [];
+
+    if (snippet.spans.length > 0) {
+        highlightBuilder.push(snippet.snippet.slice(0, snippet.spans[0][0]));
+    } else {
+        highlightBuilder.push(snippet.snippet);
+    }
+
+    for (var i=0; i<snippet.spans.length; i++) {
+        highlightBuilder.push(
+            '<span class="highlight">' +
+                snippet.snippet.slice(snippet.spans[i][0], snippet.spans[i][1]) +
+            '</span>');
+        if (i + 1 < snippet.spans.length) {
+            highlightBuilder.push(
+                snippet.snippet.slice(snippet.spans[i][1], snippet.spans[i+1][0]));
+        } else {
+            highlightBuilder.push(
+                snippet.snippet.slice(snippet.spans[i][1], snippet.snippet.length));
+        }
+    }
+
+    snippetElement.innerHTML = "<h2>" + snippet.title + "</h2>" + highlightBuilder.join('');
+    snippetContainer.appendChild(snippetElement);
+}
+            window.onload = function() {
+                snippetContainer = document.getElementById("snippet-container");
+                reloadSnippets(document.getElementById("search_box"));
+
+                addSnippet({
+                    "title": "This is the title",
+                    "snippet": "Assumenda in sit molestiae sunt eius et. Corporis aut rerum et qui. Itaque exercitationem molestias vitae autem eos nostrum pariatur accusantium. Accusantium officiis aut omnis qui illum quia praesentium provident. Inventore id ratione doloremque. Qui aliquam recusandae sed consequatur nemo numquam recusandae corporis.",
+                    "spans": [
+                        [50, 60],
+                        [100, 130]
+                    ]
+                });
+            }
+        </script>
+    </head>
+    <body>
+        <h1>Example Search Engine</h1>
+        <input type="text" onkeydown="reloadSnippets(this)" title="search" id="search_box"></input>
+        <div id="snippet-container">
+        </div>
+    </body>
+</html>

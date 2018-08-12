@@ -1,0 +1,30 @@
+[
+    {
+        "title": "The good first title",
+        "snippet": "He worshipped this new angel with furtive eye, till he saw that she had discovered him; then he pretended he did not know she was present, and began to “show off” in all sorts of absurd boyish ways, in order to win her admiration. He kept up this grotesque foolishness for some time; but by-and-by, while he was in the midst of some dangerous gymnastic performances, he glanced aside and saw that the little girl was wending her way toward the house. Tom came up to the fence and leaned on it, grieving, and hoping she would tarry yet awhile longer. She halted a moment on the steps and then moved toward the door. Tom heaved a great sigh as she put her foot on the threshold. But his face lit up, right away, for she tossed a pansy over the fence a moment before she disappeared.",
+        "spans": [
+            [100, 110],
+            [150, 155]
+        ]
+    },
+    {
+        "title": "The next title which is okay",
+        "snippet": "He returned, now, and hung about the fence till nightfall, “showing off,” as before; but the girl never exhibited herself again, though Tom comforted himself a little with the hope that she had been near some window, meantime, and been aware of his attentions. Finally he strode home reluctantly, with his poor head full of visions.",
+        "spans": [
+            [0,0]
+        ]
+    },
+    {
+        "title": "The next title which is okay",
+        "snippet": "He returned, now, and hung about the fence till nightfall, “showing off,” as before; but the girl never exhibited herself again, though Tom comforted himself a little with the hope that she had been near some window, meantime, and been aware of his attentions. Finally he strode home reluctantly, with his poor head full of visions.",
+        "spans": [
+        ]
+    },
+    {
+        "title": "The next title which is okay",
+        "snippet": "He returned, now, and hung about the fence till nightfall, “showing off,” as before; but the girl never exhibited herself again, though Tom comforted himself a little with the hope that she had been near some window, meantime, and been aware of his attentions. Finally he strode home reluctantly, with his poor head full of visions.",
+        "spans": [
+            [40, 100]
+        ]
+    }
+]

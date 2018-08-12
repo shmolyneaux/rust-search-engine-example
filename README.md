@@ -1,4 +1,4 @@
-# rust-search-engine-example
+# Rust Search Engine Example
 Example full-text search engine written in Rust using Rocket.
 
 *This example is still a work-in-progress*

@@ -43,7 +43,7 @@ body {
 
 function reloadSnippets(searchBox) {
     var request = new XMLHttpRequest();
-    request.open("GET", "/api/search");
+    request.open("GET", "/api/search/" + encodeURI(searchBox.value));
     request.onload = function() {
         clearSnippets();
         var initialSnippets = JSON.parse(this.response);
@@ -105,7 +105,7 @@ function addSnippet(snippet) {
     </head>
     <body>
         <h1>Example Search Engine</h1>
-        <input type="text" onkeydown="reloadSnippets(this)" title="search" id="search_box"></input>
+        <input type="text" oninput="reloadSnippets(this)" title="search" id="search_box"></input>
         <div id="snippet-container">
         </div>
     </body>

@@ -5,11 +5,19 @@ extern crate rocket;
 
 #[macro_use]
 extern crate rocket_contrib;
+
+#[macro_use]
 extern crate tantivy;
 
 #[macro_use]
 extern crate lazy_static;
 
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
+extern crate serde_json;
+
+use rocket::response::status::BadRequest;
 use rocket::response::NamedFile;
 use rocket_contrib::{Json, Value};
 use tantivy::{collector::TopCollector, query::QueryParser, schema::*, Index};
@@ -70,6 +78,44 @@ fn query(query: &str) -> tantivy::Result<Vec<rocket_contrib::Value>> {
     Ok(vec)
 }
 
+#[derive(Clone, Serialize, Deserialize, Debug)]
+struct Post {
+    title: String,
+    body: String
+}
+
+
+macro_rules! bad_request {
+    ($x:expr) => {
+        Err(BadRequest(Some(Json(
+            json!({ "status_code": 400, "message": $x }),
+        ))))
+    };
+}
+
+#[post("/api/document", format = "application/json", data = "<input_doc>")]
+fn post_document(input_doc: Json<Post>) -> Result<Json<Value>, BadRequest<Json<Value>>> {
+    let title: &str = &input_doc.title;
+    let body: &str = &input_doc.body;
+    match write_document(doc!(*TITLE_FIELD => title, *BODY_FIELD => body)) {
+        Err(e) => return bad_request!(&format!("Internal server error which I'm blaming on myself, sorry: {}", e)),
+        _ => ()
+    };
+
+    Ok(Json(json!({})))
+}
+
+fn write_document(doc: tantivy::Document) -> tantivy::Result<()>{
+    const THREAD_BUFFER_SIZE_BYTES: usize = 50_000_000;
+
+    let mut index_writer = INDEX.writer(THREAD_BUFFER_SIZE_BYTES)?;
+    index_writer.add_document(doc);
+    index_writer.commit()?;
+    index_writer.wait_merging_threads()?;
+
+    Ok(())
+}
+
 #[get("/api/search/<query_string>")]
 fn search(query_string: String) -> Json<Value> {
     Json(json!(query(&query_string).unwrap()))
@@ -92,6 +138,6 @@ fn index() -> NamedFile {
 
 fn main() {
     rocket::ignite()
-        .mount("/", routes![search, empty_search, favicon, index])
+        .mount("/", routes![search, empty_search, post_document, favicon, index])
         .launch();
 }

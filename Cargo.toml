@@ -13,3 +13,4 @@ serde_json = "*"
 serde = "*"
 bzip2 = "0.3.3"
 lazy_static = "1.1.0"
+ureq = { version = "*", features = ["json", "charset"] }

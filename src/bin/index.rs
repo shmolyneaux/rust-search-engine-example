@@ -1,6 +1,11 @@
 extern crate bzip2;
+#[macro_use]
 extern crate serde_json;
+
+#[macro_use]
 extern crate tantivy;
+
+extern crate ureq;
 
 use std::io::{BufRead, BufReader};
 use std::path::Path;
@@ -8,33 +13,13 @@ use tantivy::{schema::*, Index};
 
 use serde_json::Value;
 
-fn run_indexer(src_path: &Path, dest_path: &Path) -> tantivy::Result<()> {
-    let mut schema_builder = SchemaBuilder::default();
-    schema_builder.add_text_field("title", TEXT | STORED);
-    schema_builder.add_text_field("body", TEXT | STORED);
-
-    let schema = schema_builder.build();
-    let index = Index::create_in_dir(dest_path, schema.clone())?;
-
-    const THREAD_BUFFER_SIZE_BYTES: usize = 50_000_000;
-    let mut index_writer = index.writer(THREAD_BUFFER_SIZE_BYTES)?;
-
-    let title = schema.get_field("title").unwrap();
-    let body = schema.get_field("body").unwrap();
-
-    let docs = get_documents(src_path, &title, &body);
-    for doc in docs {
-        index_writer.add_document(doc);
-    }
-
-    index_writer.commit()?;
-    index_writer.wait_merging_threads()?;
-
-    Ok(())
+#[derive(Debug)]
+struct Post {
+    title: String,
+    body: String,
 }
 
-fn get_documents(parent_directory: &Path, title: &Field, body: &Field) -> Vec<Document> {
-    let mut vec = Vec::new();
+fn process_documents(parent_directory: &Path, cb: fn(Post) -> ()) {
     for entry in std::fs::read_dir(parent_directory).unwrap() {
         let entry = match entry {
             Ok(entry) => entry,
@@ -46,8 +31,7 @@ fn get_documents(parent_directory: &Path, title: &Field, body: &Field) -> Vec<Do
 
         let path = entry.path();
         if path.is_dir() {
-            let mut child_documents = get_documents(&path, title, body);
-            vec.append(&mut child_documents);
+            process_documents(&path, cb);
             continue;
         }
 
@@ -65,18 +49,26 @@ fn get_documents(parent_directory: &Path, title: &Field, body: &Field) -> Vec<Do
 
         for line in zip.lines() {
             let val: Value = serde_json::from_str(&line.unwrap()).unwrap();
-            let author: &str = val.get("author").unwrap().as_str().unwrap();
-            let contents: &str = val.get("body").unwrap().as_str().unwrap();
-            let mut doc = Document::default();
-            doc.add_text(*title, author);
-            doc.add_text(*body, &contents);
-            vec.push(doc);
+            let title: &str = val.get("author").unwrap().as_str().unwrap();
+            let body: &str = val.get("body").unwrap().as_str().unwrap();
+            cb(Post {title: title.to_string(), body: body.to_string()});
         }
     }
-    vec
 }
 
 fn main() {
-    println!("Starting indexing");
-    run_indexer(Path::new("corpus"), Path::new("index")).unwrap();
+    process_documents(Path::new("corpus"), |post| {
+        let resp = ureq::post("http://localhost:8000/api/document")
+            .set("Content-Type", "application/json")
+            .send_json(json!({
+                "title": post.title,
+                "body": post.body
+            }));
+
+        if resp.ok() {
+            println!("Sent {:?}", post);
+        } else {
+            eprintln!("Error while posting {:?}: {:?}", post, resp);
+        }
+    });
 }

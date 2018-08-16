@@ -84,22 +84,28 @@ struct Post {
     body: String
 }
 
-
-macro_rules! bad_request {
-    ($x:expr) => {
-        Err(BadRequest(Some(Json(
-            json!({ "status_code": 400, "message": $x }),
-        ))))
-    };
+fn wrapped_bad_request(s: &str) -> BadRequest<Json<Value>> {
+    BadRequest(Some(Json(
+        json!({ "status_code": 400, "message": s }),
+    )))
 }
 
-#[post("/api/document", format = "application/json", data = "<input_doc>")]
+#[post(
+    "/api/document",
+    format = "application/json",
+    data = "<input_doc>"
+)]
 fn post_document(input_doc: Json<Post>) -> Result<Json<Value>, BadRequest<Json<Value>>> {
     let title: &str = &input_doc.title;
     let body: &str = &input_doc.body;
     match write_document(doc!(*TITLE_FIELD => title, *BODY_FIELD => body)) {
-        Err(e) => return bad_request!(&format!("Internal server error which I'm blaming on myself, sorry: {}", e)),
-        _ => ()
+        Err(e) => {
+            return Err(wrapped_bad_request(&format!(
+                "Internal server error which I'm blaming on myself, sorry: {}",
+                e
+            )))
+        }
+        _ => (),
     };
 
     Ok(Json(json!({})))
@@ -117,8 +123,10 @@ fn write_document(doc: tantivy::Document) -> tantivy::Result<()>{
 }
 
 #[get("/api/search/<query_string>")]
-fn search(query_string: String) -> Json<Value> {
-    Json(json!(query(&query_string).unwrap()))
+fn search(query_string: String) -> Result<Json<Value>, BadRequest<Json<Value>>> {
+    query(&query_string)
+        .map(|results| Json(json!(results)))
+        .map_err(|_| wrapped_bad_request("Invalid query string"))
 }
 
 #[get("/api/search")]

@@ -7,25 +7,40 @@ extern crate rocket;
 extern crate rocket_contrib;
 extern crate tantivy;
 
+#[macro_use]
+extern crate lazy_static;
+
 use rocket::response::NamedFile;
 use rocket_contrib::{Json, Value};
-use std::path::Path;
 use tantivy::{collector::TopCollector, query::QueryParser, schema::*, Index};
 
-fn query(index_path: &Path, query: &str) -> tantivy::Result<Vec<rocket_contrib::Value>> {
-    let mut schema_builder = SchemaBuilder::default();
-    schema_builder.add_text_field("title", TEXT | STORED);
-    schema_builder.add_text_field("body", TEXT | STORED);
+const INDEX_PATH: &str = "index";
 
-    let schema = schema_builder.build();
-    let title = schema.get_field("title").unwrap();
-    let body = schema.get_field("body").unwrap();
+lazy_static! {
+    static ref SCHEMA: Schema = {
+        let mut schema_builder = SchemaBuilder::default();
+        schema_builder.add_text_field("title", TEXT | STORED);
+        schema_builder.add_text_field("body", TEXT | STORED);
 
-    let index = Index::open_in_dir(index_path)?;
-    index.load_searchers()?;
-    let searcher = index.searcher();
+        schema_builder.build()
+    };
+    static ref TITLE_FIELD: tantivy::schema::Field = { SCHEMA.get_field("title").unwrap() };
+    static ref BODY_FIELD: tantivy::schema::Field = { SCHEMA.get_field("body").unwrap() };
+    static ref INDEX: Index = {
+        Index::open_in_dir(INDEX_PATH).expect(&format!("Could not open index in {}", INDEX_PATH))
+    };
+}
 
-    let query_parser = QueryParser::for_index(&index, vec![title, body]);
+fn query(query: &str) -> tantivy::Result<Vec<rocket_contrib::Value>> {
+    // The lazy_static macro creates references. We dereference them here so
+    // that we can use the fields directly
+    let title = *TITLE_FIELD;
+    let body = *BODY_FIELD;
+
+    INDEX.load_searchers()?;
+    let searcher = INDEX.searcher();
+
+    let query_parser = QueryParser::for_index(&INDEX, vec![title, body]);
     let query = query_parser.parse_query(&query)?;
 
     let mut top_collector = TopCollector::with_limit(7);
@@ -57,12 +72,12 @@ fn query(index_path: &Path, query: &str) -> tantivy::Result<Vec<rocket_contrib::
 
 #[get("/api/search/<query_string>")]
 fn search(query_string: String) -> Json<Value> {
-    Json(json!(query(Path::new("index"), &query_string).unwrap()))
+    Json(json!(query(&query_string).unwrap()))
 }
 
 #[get("/api/search")]
 fn empty_search() -> Json<Value> {
-    Json(json!(query(Path::new("index"), "Example search").unwrap()))
+    Json(json!(query("Example search").unwrap()))
 }
 
 #[get("/favicon.ico")]
